@@ -1,0 +1,13 @@
+<wpml-config>
+  <custom-types>
+    <custom-type translate="1">ielts_lesson</custom-type>
+    <custom-type translate="1">ielts_kit</custom-type>
+    <custom-type translate="1">ielts_practice</custom-type>
+  </custom-types>
+  <custom-fields>
+    <custom-field action="translate">_ielts_level</custom-field>
+    <custom-field action="translate">_ielts_category</custom-field>
+    <custom-field action="copy">_ielts_is_paid</custom-field>
+    <custom-field action="copy">_ielts_duration_sec</custom-field>
+  </custom-fields>
+</wpml-config>
