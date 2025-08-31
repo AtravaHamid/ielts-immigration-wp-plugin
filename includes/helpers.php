@@ -9,3 +9,10 @@ function ielts_get_template($file, $args = []){
   if (!empty($args)) extract($args);
   include $path;
 }
+
+function ielts_get_featured_image_url($post_id, $size = 'full'){
+  $thumb_id = get_post_thumbnail_id($post_id);
+  if(!$thumb_id) return '';
+  $img = wp_get_attachment_image_src($thumb_id, $size);
+  return $img ? $img[0] : '';
+}
