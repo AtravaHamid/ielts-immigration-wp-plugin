@@ -1,0 +1,35 @@
+.ielts-hero {
+  text-align: center;
+  padding: 2rem;
+}
+
+.ielts-hero__actions .button {
+  margin: 0 0.5rem;
+}
+
+.ielts-paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.ielts-paths__item {
+  flex: 1 1 200px;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ielts-latest {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width:600px) {
+  .ielts-paths {
+    flex-direction: column;
+  }
+}
