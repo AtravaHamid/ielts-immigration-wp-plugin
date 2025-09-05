@@ -20,11 +20,13 @@ require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-home.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-rest-api.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-purchases.php';
+require_once IELTS_MIGRATION_DIR.'includes/class-admin.php';
 
 new IELTS_Assets();
 new IELTS_Custom_Posts();
 new IELTS_Shortcodes();
 new IELTS_Shortcodes_Home();
+add_action( 'plugins_loaded', static function(){ new IELTS_Admin(); } );
 
 if ( file_exists(IELTS_MIGRATION_DIR.'integrations/woocommerce.php') ) require_once IELTS_MIGRATION_DIR.'integrations/woocommerce.php';
 if ( file_exists(IELTS_MIGRATION_DIR.'integrations/seo.php') )          require_once IELTS_MIGRATION_DIR.'integrations/seo.php';
