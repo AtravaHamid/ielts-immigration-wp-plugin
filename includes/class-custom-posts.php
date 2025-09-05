@@ -23,7 +23,7 @@ class IELTS_Custom_Posts {
             'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'custom-fields' ],
             'menu_icon'    => 'dashicons-welcome-learn-more',
             // Nest under the IELTS Immigration menu.
-            'show_in_menu' => 'ielts_migration',
+            'show_in_menu' => IELTS_Admin_Menu::MENU_SLUG,
         ] );
 
         register_post_type( 'ielts_kit', [
@@ -38,7 +38,7 @@ class IELTS_Custom_Posts {
             'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'custom-fields' ],
             'menu_icon'    => 'dashicons-portfolio',
             // Nest under the IELTS Immigration menu.
-            'show_in_menu' => 'ielts_migration',
+            'show_in_menu' => IELTS_Admin_Menu::MENU_SLUG,
         ] );
 
         register_post_type( 'ielts_practice', [
@@ -53,7 +53,7 @@ class IELTS_Custom_Posts {
             'supports'     => [ 'title', 'editor', 'custom-fields' ],
             'menu_icon'    => 'dashicons-edit',
             // Nest under the IELTS Immigration menu.
-            'show_in_menu' => 'ielts_migration',
+            'show_in_menu' => IELTS_Admin_Menu::MENU_SLUG,
         ] );
     }
 }
