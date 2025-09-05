@@ -21,12 +21,36 @@ class IELTS_Admin_Menu {
      */
     public function register_menu() : void {
         add_menu_page(
-            __( 'IELTS Migration', 'IELTS-IMMIGRATION' ),
-            __( 'IELTS Migration', 'IELTS-IMMIGRATION' ),
+            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
+            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
             'manage_options',
             self::MENU_SLUG,
             [ $this, 'render_dashboard' ],
             'dashicons-welcome-learn-more'
+        );
+
+        add_submenu_page(
+            self::MENU_SLUG,
+            __( 'Lessons', 'IELTS-IMMIGRATION' ),
+            __( 'Lessons', 'IELTS-IMMIGRATION' ),
+            'edit_posts',
+            'edit.php?post_type=ielts_lesson'
+        );
+
+        add_submenu_page(
+            self::MENU_SLUG,
+            __( 'Kits', 'IELTS-IMMIGRATION' ),
+            __( 'Kits', 'IELTS-IMMIGRATION' ),
+            'edit_posts',
+            'edit.php?post_type=ielts_kit'
+        );
+
+        add_submenu_page(
+            self::MENU_SLUG,
+            __( 'Practices', 'IELTS-IMMIGRATION' ),
+            __( 'Practices', 'IELTS-IMMIGRATION' ),
+            'edit_posts',
+            'edit.php?post_type=ielts_practice'
         );
     }
 
@@ -58,7 +82,7 @@ class IELTS_Admin_Menu {
         }
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html__( 'IELTS Migration', 'IELTS-IMMIGRATION' ); ?></h1>
+            <h1><?php echo esc_html__( 'IELTS Immigration', 'IELTS-IMMIGRATION' ); ?></h1>
 
             <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Overview', 'IELTS-IMMIGRATION' ); ?></h2>
             <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>

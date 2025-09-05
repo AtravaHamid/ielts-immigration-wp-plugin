@@ -21,7 +21,6 @@ require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-home.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-rest-api.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-purchases.php';
-require_once IELTS_MIGRATION_DIR.'includes/class-admin.php';
 
 new IELTS_Assets();
 new IELTS_Custom_Posts();
@@ -31,6 +30,7 @@ add_action( 'plugins_loaded', static function() {
     load_plugin_textdomain( 'IELTS-IMMIGRATION', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 
     if ( is_admin() ) {
+        require_once IELTS_MIGRATION_DIR . 'includes/class-admin.php';
         new IELTS_Admin_Menu();
     }
 } );
