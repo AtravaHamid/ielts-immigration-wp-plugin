@@ -22,6 +22,7 @@ class IELTS_Custom_Posts {
             'rewrite'      => [ 'slug' => 'lesson' ],
             'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'custom-fields' ],
             'menu_icon'    => 'dashicons-welcome-learn-more',
+            'show_in_menu' => 'ielts_migration',
         ] );
 
         register_post_type( 'ielts_kit', [
@@ -35,6 +36,7 @@ class IELTS_Custom_Posts {
             'rewrite'      => [ 'slug' => 'kits' ],
             'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'custom-fields' ],
             'menu_icon'    => 'dashicons-portfolio',
+            'show_in_menu' => 'ielts_migration',
         ] );
 
         register_post_type( 'ielts_practice', [
@@ -48,6 +50,7 @@ class IELTS_Custom_Posts {
             'rewrite'      => [ 'slug' => 'practice' ],
             'supports'     => [ 'title', 'editor', 'custom-fields' ],
             'menu_icon'    => 'dashicons-edit',
+            'show_in_menu' => 'ielts_migration',
         ] );
     }
 }
