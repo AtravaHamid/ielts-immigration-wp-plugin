@@ -5,8 +5,9 @@
 class IELTS_Admin_Menu {
     /**
      * Menu slug for the plugin dashboard.
+     * Exposed so other classes can nest submenus.
      */
-    private const MENU_SLUG = 'ielts_migration';
+    public const MENU_SLUG = 'ielts_migration';
 
     /**
      * Constructor.
@@ -17,7 +18,8 @@ class IELTS_Admin_Menu {
     }
 
     /**
-     * Register top-level menu.
+     * Register top-level plugin menu. Custom post types appear
+     * automatically under this menu via the `show_in_menu` argument.
      */
     public function register_menu() : void {
         add_menu_page(
@@ -27,30 +29,6 @@ class IELTS_Admin_Menu {
             self::MENU_SLUG,
             [ $this, 'render_dashboard' ],
             'dashicons-welcome-learn-more'
-        );
-
-        add_submenu_page(
-            self::MENU_SLUG,
-            __( 'Lessons', 'IELTS-IMMIGRATION' ),
-            __( 'Lessons', 'IELTS-IMMIGRATION' ),
-            'edit_posts',
-            'edit.php?post_type=ielts_lesson'
-        );
-
-        add_submenu_page(
-            self::MENU_SLUG,
-            __( 'Kits', 'IELTS-IMMIGRATION' ),
-            __( 'Kits', 'IELTS-IMMIGRATION' ),
-            'edit_posts',
-            'edit.php?post_type=ielts_kit'
-        );
-
-        add_submenu_page(
-            self::MENU_SLUG,
-            __( 'Practices', 'IELTS-IMMIGRATION' ),
-            __( 'Practices', 'IELTS-IMMIGRATION' ),
-            'edit_posts',
-            'edit.php?post_type=ielts_practice'
         );
     }
 
