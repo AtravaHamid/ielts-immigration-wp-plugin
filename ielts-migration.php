@@ -29,7 +29,10 @@ new IELTS_Shortcodes();
 new IELTS_Shortcodes_Home();
 add_action( 'plugins_loaded', static function() {
     load_plugin_textdomain( 'IELTS-IMMIGRATION', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-    new IELTS_Admin();
+
+    if ( is_admin() ) {
+        new IELTS_Admin_Menu();
+    }
 } );
 
 if ( file_exists(IELTS_MIGRATION_DIR.'integrations/woocommerce.php') ) require_once IELTS_MIGRATION_DIR.'integrations/woocommerce.php';

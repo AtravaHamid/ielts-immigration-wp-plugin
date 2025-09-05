@@ -2,7 +2,7 @@
 /**
  * Admin menu and settings scaffold.
  */
-class IELTS_Admin {
+class IELTS_Admin_Menu {
     /**
      * Menu slug for the plugin dashboard.
      */
