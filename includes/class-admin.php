@@ -21,8 +21,8 @@ class IELTS_Admin {
      */
     public function register_menu() : void {
         add_menu_page(
-            __( 'IELTS Immigration', 'ielts-migration' ),
-            __( 'IELTS Immigration', 'ielts-migration' ),
+            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
+            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
             'manage_options',
             self::MENU_SLUG,
             [ $this, 'render_dashboard' ],
@@ -58,19 +58,19 @@ class IELTS_Admin {
         }
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html__( 'IELTS Immigration', 'ielts-migration' ); ?></h1>
+            <h1><?php echo esc_html__( 'IELTS Immigration', 'IELTS-IMMIGRATION' ); ?></h1>
 
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Overview', 'ielts-migration' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'ielts-migration' ); ?></p>
+            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Overview', 'IELTS-IMMIGRATION' ); ?></h2>
+            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
 
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Shortcodes', 'ielts-migration' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'ielts-migration' ); ?></p>
+            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Shortcodes', 'IELTS-IMMIGRATION' ); ?></h2>
+            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
 
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'REST', 'ielts-migration' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'ielts-migration' ); ?></p>
+            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'REST', 'IELTS-IMMIGRATION' ); ?></h2>
+            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
 
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Logs', 'ielts-migration' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'ielts-migration' ); ?></p>
+            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Logs', 'IELTS-IMMIGRATION' ); ?></h2>
+            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
         </div>
         <?php
     }

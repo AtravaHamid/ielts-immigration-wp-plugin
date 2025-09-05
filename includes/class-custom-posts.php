@@ -13,8 +13,8 @@ class IELTS_Custom_Posts {
     public function register_post_types() : void {
         register_post_type( 'ielts_lesson', [
             'labels' => [
-                'name'          => __( 'Lessons', 'ielts-migration' ),
-                'singular_name' => __( 'Lesson', 'ielts-migration' ),
+                'name'          => __( 'Lessons', 'IELTS-IMMIGRATION' ),
+                'singular_name' => __( 'Lesson', 'IELTS-IMMIGRATION' ),
             ],
             'public'       => true,
             'show_in_rest' => true,
@@ -26,8 +26,8 @@ class IELTS_Custom_Posts {
 
         register_post_type( 'ielts_kit', [
             'labels' => [
-                'name'          => __( 'Kits', 'ielts-migration' ),
-                'singular_name' => __( 'Kit', 'ielts-migration' ),
+                'name'          => __( 'Kits', 'IELTS-IMMIGRATION' ),
+                'singular_name' => __( 'Kit', 'IELTS-IMMIGRATION' ),
             ],
             'public'       => true,
             'show_in_rest' => true,
@@ -39,8 +39,8 @@ class IELTS_Custom_Posts {
 
         register_post_type( 'ielts_practice', [
             'labels' => [
-                'name'          => __( 'Practices', 'ielts-migration' ),
-                'singular_name' => __( 'Practice', 'ielts-migration' ),
+                'name'          => __( 'Practices', 'IELTS-IMMIGRATION' ),
+                'singular_name' => __( 'Practice', 'IELTS-IMMIGRATION' ),
             ],
             'public'       => true,
             'show_in_rest' => true,

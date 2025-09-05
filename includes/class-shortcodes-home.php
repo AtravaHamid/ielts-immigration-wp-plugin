@@ -99,19 +99,19 @@ class IELTS_Shortcodes_Home {
     public function render_paths() : string {
         $paths = [
             [
-                'title' => __( 'IELTS', 'ielts-migration' ),
+                'title' => __( 'IELTS', 'IELTS-IMMIGRATION' ),
                 'url'   => esc_url( home_url( '/ielts' ) ),
             ],
             [
-                'title' => __( 'مهاجرت استرالیا', 'ielts-migration' ),
+                'title' => __( 'مهاجرت استرالیا', 'IELTS-IMMIGRATION' ),
                 'url'   => esc_url( home_url( '/australia-immigration' ) ),
             ],
             [
-                'title' => __( 'فروشگاه', 'ielts-migration' ),
+                'title' => __( 'فروشگاه', 'IELTS-IMMIGRATION' ),
                 'url'   => esc_url( home_url( '/shop' ) ),
             ],
             [
-                'title' => __( 'وبلاگ', 'ielts-migration' ),
+                'title' => __( 'وبلاگ', 'IELTS-IMMIGRATION' ),
                 'url'   => esc_url( home_url( '/blog' ) ),
             ],
         ];

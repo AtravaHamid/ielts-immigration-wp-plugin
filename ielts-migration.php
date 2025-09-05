@@ -4,7 +4,8 @@
  * Description: مدیریت درس‌ها/کیت‌ها/تمرین‌ها + REST + پرداخت/لایسنس (سازگار با Woo، Elementor، WPBakery، WPML/Polylang)
  * Version: 0.1.0
  * Author: IELTS & Immigration
- * Text Domain: ielts-migration
+ * Text Domain: IELTS-IMMIGRATION
+ * Domain Path: /languages
  */
 
 if ( ! defined('ABSPATH') ) exit;
@@ -26,7 +27,10 @@ new IELTS_Assets();
 new IELTS_Custom_Posts();
 new IELTS_Shortcodes();
 new IELTS_Shortcodes_Home();
-add_action( 'plugins_loaded', static function(){ new IELTS_Admin(); } );
+add_action( 'plugins_loaded', static function() {
+    load_plugin_textdomain( 'IELTS-IMMIGRATION', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+    new IELTS_Admin();
+} );
 
 if ( file_exists(IELTS_MIGRATION_DIR.'integrations/woocommerce.php') ) require_once IELTS_MIGRATION_DIR.'integrations/woocommerce.php';
 if ( file_exists(IELTS_MIGRATION_DIR.'integrations/seo.php') )          require_once IELTS_MIGRATION_DIR.'integrations/seo.php';
