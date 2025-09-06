@@ -44,6 +44,8 @@
 - [❌] P2-08 لینک دانلود امضادار و تاریخ انقضا برای دارایی‌های پولی
 - [❌] P2-09 لاگ سبک دانلود/فعالیت (برای گزارش)
 - [❌] P2-10 واحد تست ساده برای شورتکد و REST
+- [✔️] P2-11 Admin menu & settings scaffold (PR #TBD)
+- [✔️] LOG-21 Refactor admin menu & integrate post types under IELTS parent menu
 
 ---
 
