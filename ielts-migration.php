@@ -1,44 +1,46 @@
-<?php
+﻿<?php
 /**
- * Plugin Name: IELTS & Migration Toolkit
- * Description: مدیریت درس‌ها/کیت‌ها/تمرین‌ها + REST + پرداخت/لایسنس (سازگار با Woo، Elementor، WPBakery، WPML/Polylang)
- * Version: 0.1.0
+ * Plugin Name: ExamBoard (IELTS & PTE)
+ * Description: برد تمرین و آزمون برای IELTS/PTE: درسها کیتها تمرینها شورتکدها و REST. سازگار با Woo/Elementor/WPBakery/WPML/Polylang.
+ * Version: 0.2.0
  * Author: IELTS & Immigration
- * Text Domain: IELTS-IMMIGRATION
- * Domain Path: /languages
+ * Text Domain: ielts-migration
  */
 
 if ( ! defined('ABSPATH') ) exit;
 
-define('IELTS_MIGRATION_VER', '0.1.0');
+define('IELTS_MIGRATION_VER', '0.2.0');
 define('IELTS_MIGRATION_DIR', plugin_dir_path(__FILE__));
 define('IELTS_MIGRATION_URL', plugin_dir_url(__FILE__));
 
 require_once IELTS_MIGRATION_DIR.'includes/helpers.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-assets.php';
+require_once IELTS_MIGRATION_DIR.'includes/class-admin.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-custom-posts.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes.php';
-require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-home.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-rest-api.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-purchases.php';
-require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-board.php';
-new IELTS_Board_Shortcode();
-
 
 new IELTS_Assets();
+new IELTS_Admin_Menu();
 new IELTS_Custom_Posts();
 new IELTS_Shortcodes();
-new IELTS_Shortcodes_Home();
-add_action( 'plugins_loaded', static function() {
-    load_plugin_textdomain( 'IELTS-IMMIGRATION', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+new IELTS_REST_API();
 
-    if ( is_admin() ) {
-        require_once IELTS_MIGRATION_DIR . 'includes/class-admin.php';
-        new IELTS_Admin_Menu();
-    }
-} );
+foreach ([
+    'integrations/woocommerce.php',
+    'integrations/seo.php',
+    'integrations/wpbakery.php',
+    'integrations/elementor/plugin.php'
+] as $rel) {
+    $path = IELTS_MIGRATION_DIR.$rel;
+    if ( file_exists($path) ) require_once $path;
+}
 
-if ( file_exists(IELTS_MIGRATION_DIR.'integrations/woocommerce.php') ) require_once IELTS_MIGRATION_DIR.'integrations/woocommerce.php';
-if ( file_exists(IELTS_MIGRATION_DIR.'integrations/seo.php') )          require_once IELTS_MIGRATION_DIR.'integrations/seo.php';
-if ( file_exists(IELTS_MIGRATION_DIR.'integrations/wpbakery.php') )     require_once IELTS_MIGRATION_DIR.'integrations/wpbakery.php';
-if ( file_exists(IELTS_MIGRATION_DIR.'integrations/elementor/plugin.php') ) require_once IELTS_MIGRATION_DIR.'integrations/elementor/plugin.php';
+register_activation_hook(__FILE__, function() {
+    (new IELTS_Custom_Posts())->register_post_types();
+    flush_rewrite_rules();
+});
+register_deactivation_hook(__FILE__, function() {
+    flush_rewrite_rules();
+});

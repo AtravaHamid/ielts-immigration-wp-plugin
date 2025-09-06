@@ -1,79 +1,47 @@
-<?php
-/**
- * Admin menu and settings scaffold.
- */
-class IELTS_Admin_Menu {
-    /**
-     * Menu slug for the plugin dashboard.
-     * Exposed so other classes can nest submenus.
-     */
-    public const MENU_SLUG = 'ielts_migration';
+﻿<?php
+if ( ! defined('ABSPATH') ) exit;
 
-    /**
-     * Constructor.
-     */
+class IELTS_Admin_Menu {
+    public const MENU_SLUG = 'exam_board';
+
     public function __construct() {
-        add_action( 'admin_menu', [ $this, 'register_menu' ] );
-        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+        add_action('admin_menu', [$this, 'register_menu']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
     }
 
-    /**
-     * Register top-level plugin menu. Custom post types appear
-     * automatically under this menu via the `show_in_menu` argument.
-     */
     public function register_menu() : void {
         add_menu_page(
-            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
-            __( 'IELTS Immigration', 'IELTS-IMMIGRATION' ),
-            'manage_options',
+            __('ExamBoard', 'ielts-migration'),
+            __('ExamBoard', 'ielts-migration'),
+            'edit_posts',
             self::MENU_SLUG,
-            [ $this, 'render_dashboard' ],
-            'dashicons-welcome-learn-more'
+            [$this, 'render_dashboard'],
+            'dashicons-welcome-learn-more',
+            26
         );
     }
 
-    /**
-     * Enqueue admin assets only on our page.
-     *
-     * @param string $hook Current admin page hook.
-     */
-    public function enqueue_assets( string $hook ) : void {
-        $page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-        if ( self::MENU_SLUG !== $page ) {
-            return;
-        }
+    public function enqueue_assets(string $hook) : void {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page !== self::MENU_SLUG) return;
 
         wp_enqueue_style(
-            'ielts-admin',
-            IELTS_MIGRATION_URL . 'public/css/admin.css',
+            'exam-board-admin',
+            IELTS_MIGRATION_URL.'public/css/admin.css',
             [],
             IELTS_MIGRATION_VER
         );
     }
 
-    /**
-     * Render dashboard page.
-     */
     public function render_dashboard() : void {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            return;
-        }
-        ?>
-        <div class="wrap">
-            <h1><?php echo esc_html__( 'IELTS Immigration', 'IELTS-IMMIGRATION' ); ?></h1>
-
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Overview', 'IELTS-IMMIGRATION' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
-
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Shortcodes', 'IELTS-IMMIGRATION' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
-
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'REST', 'IELTS-IMMIGRATION' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
-
-            <h2 class="title ielts-admin-section"><?php echo esc_html__( 'Logs', 'IELTS-IMMIGRATION' ); ?></h2>
-            <p><?php echo esc_html__( 'Coming soon…', 'IELTS-IMMIGRATION' ); ?></p>
-        </div>
-        <?php
+        echo '<div class="wrap">';
+        echo '<h1>'.esc_html__('ExamBoard — IELTS & PTE', 'ielts-migration').'</h1>';
+        echo '<p>'.esc_html__('Manage lessons, kits, and practices here. Use the submenu items to add or list content.', 'ielts-migration').'</p>';
+        echo '<ul style="list-style:disc; margin-top:10px">';
+        echo '<li><a href="'.esc_url( admin_url('edit.php?post_type=ielts_lesson') ).'">'.esc_html__('Lessons', 'ielts-migration').'</a></li>';
+        echo '<li><a href="'.esc_url( admin_url('edit.php?post_type=ielts_kit') ).'">'.esc_html__('Kits', 'ielts-migration').'</a></li>';
+        echo '<li><a href="'.esc_url( admin_url('edit.php?post_type=ielts_practice') ).'">'.esc_html__('Practices', 'ielts-migration').'</a></li>';
+        echo '</ul>';
+        echo '</div>';
     }
 }

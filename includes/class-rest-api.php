@@ -1,184 +1,98 @@
-<?php
+﻿<?php
+if ( ! defined('ABSPATH') ) exit;
 
-require_once __DIR__ . '/class-telemetry.php';
-
-/**
- * Register REST routes for the plugin.
- */
-add_action( 'rest_api_init', function() {
-    register_rest_route( 'ielts/v1', '/lessons', [
-        'methods'  => 'GET',
-        'callback' => function( WP_REST_Request $req ) {
-            $level    = sanitize_text_field( $req->get_param( 'level' ) );
-            $category = sanitize_text_field( $req->get_param( 'category' ) );
-            $limit    = absint( $req->get_param( 'limit' ) ) ?: 12;
-            $limit    = min( $limit, 50 );
-            $args = [
-                'post_type'      => 'ielts_lesson',
-                'posts_per_page' => $limit,
-                'post_status'    => 'publish',
-                'meta_query'     => array_filter([
-                    $level ? [ 'key' => '_ielts_level', 'value' => $level ] : null,
-                    $category ? [ 'key' => '_ielts_category', 'value' => $category ] : null,
-                ]),
-            ];
-            $query = new WP_Query( $args );
-            $items = [];
-            while ( $query->have_posts() ) {
-                $query->the_post();
-                $id      = get_the_ID();
-                $items[] = [
-                    'id'                => $id,
-                    'title'             => get_the_title(),
-                    'permalink'         => get_permalink(),
-                    'excerpt'           => get_the_excerpt(),
-                    'level'             => get_post_meta( $id, '_ielts_level', true ),
-                    'category'          => get_post_meta( $id, '_ielts_category', true ),
-                    'featured_image_url' => ielts_get_featured_image_url( $id ),
-                ];
-            }
-            wp_reset_postdata();
-            return rest_ensure_response( [ 'items' => $items ] );
-        },
-        'permission_callback' => '__return_true',
-    ] );
-
-    register_rest_route( 'ielts/v1', '/session/start', [
-        'methods'  => 'POST',
-        'callback' => function( WP_REST_Request $req ) {
-            $nonce = $req->get_header( 'X-WP-Nonce' );
-            if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid nonce', 'ielts-migration' ) ] );
-            }
-            if ( ! is_user_logged_in() || ! current_user_can( 'read' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Unauthorized', 'ielts-migration' ) ] );
-            }
-            $item_id = absint( $req->get_param( 'id' ) );
-            $payload_json = get_post_meta( $item_id, '_payload_json', true );
-            if ( empty( $payload_json ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid item', 'ielts-migration' ) ] );
-            }
-            $is_paid = get_post_meta( $item_id, '_item_paid', true );
-            if ( $is_paid ) {
-                $credits = (int) get_user_meta( get_current_user_id(), 'test_credits', true );
-                if ( $credits < 1 ) {
-                    return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Not enough credits', 'ielts-migration' ) ] );
-                }
-            }
-            $payload = json_decode( $payload_json, true );
-            return rest_ensure_response( [ 'ok' => true, 'data' => $payload ] );
-        },
-        'permission_callback' => '__return_true',
-    ] );
-
-    register_rest_route( 'ielts/v1', '/session/answer', [
-        'methods'  => 'POST',
-        'callback' => function( WP_REST_Request $req ) {
-            $nonce = $req->get_header( 'X-WP-Nonce' );
-            if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid nonce', 'ielts-migration' ) ] );
-            }
-            if ( ! is_user_logged_in() || ! current_user_can( 'read' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Unauthorized', 'ielts-migration' ) ] );
-            }
-            $item_id = absint( $req->get_param( 'id' ) );
-            $answer  = sanitize_textarea_field( $req->get_param( 'answer' ) );
-            update_user_meta( get_current_user_id(), 'ielts_answer_' . $item_id, $answer );
-            return rest_ensure_response( [ 'ok' => true ] );
-        },
-        'permission_callback' => '__return_true',
-    ] );
-
-    register_rest_route( 'ielts/v1', '/session/finish', [
-        'methods'  => 'POST',
-        'callback' => function( WP_REST_Request $req ) {
-            $nonce = $req->get_header( 'X-WP-Nonce' );
-            if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid nonce', 'ielts-migration' ) ] );
-            }
-            if ( ! is_user_logged_in() || ! current_user_can( 'read' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Unauthorized', 'ielts-migration' ) ] );
-            }
-            $item_id      = absint( $req->get_param( 'id' ) );
-            $answer       = sanitize_textarea_field( $req->get_param( 'answer' ) );
-            $type         = get_post_meta( $item_id, '_item_type', true );
-            $payload_json = get_post_meta( $item_id, '_payload_json', true );
-            $payload      = json_decode( $payload_json, true );
-            $result       = [];
-            if ( 'dictation' === $type && ! empty( $payload['text'] ) ) {
-                $ref            = wp_strip_all_tags( $payload['text'] );
-                $result['wer']  = ielts_calc_wer( $ref, $answer );
-            } elseif ( 'writing' === $type ) {
-                $result['word_count'] = str_word_count( $answer );
-            }
-            IELTS_Telemetry::save_stats( get_current_user_id(), $item_id, $result );
-            delete_user_meta( get_current_user_id(), 'ielts_answer_' . $item_id );
-            return rest_ensure_response( [ 'ok' => true, 'data' => $result ] );
-        },
-        'permission_callback' => '__return_true',
-    ] );
-
-    register_rest_route( 'ielts/v1', '/speaking', [
-        'methods'  => 'POST',
-        'callback' => function( WP_REST_Request $req ) {
-            $nonce = $req->get_header( 'X-WP-Nonce' );
-            if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid nonce', 'ielts-migration' ) ] );
-            }
-            if ( ! is_user_logged_in() || ! current_user_can( 'upload_files' ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Unauthorized', 'ielts-migration' ) ] );
-            }
-            $item_id = absint( $req->get_param( 'item' ) );
-            $files   = $req->get_file_params();
-            if ( empty( $files['file'] ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'No file', 'ielts-migration' ) ] );
-            }
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-            require_once ABSPATH . 'wp-admin/includes/media.php';
-            require_once ABSPATH . 'wp-admin/includes/image.php';
-            $attachment_id = media_handle_sideload( $files['file'], $item_id, null, [
-                'post_status' => 'private',
-                'post_author' => get_current_user_id(),
-            ] );
-            if ( is_wp_error( $attachment_id ) ) {
-                return rest_ensure_response( [ 'ok' => false, 'error' => $attachment_id->get_error_message() ] );
-            }
-            update_user_meta( get_current_user_id(), 'ielts_speaking_' . $item_id, $attachment_id );
-            return rest_ensure_response( [ 'ok' => true, 'url' => wp_get_attachment_url( $attachment_id ) ] );
-        },
-        'permission_callback' => '__return_true',
-    ] );
-} );
-
-/**
- * Calculate word error rate.
- *
- * @param string $ref Reference text.
- * @param string $hyp Hypothesis text.
- *
- * @return float
- */
-function ielts_calc_wer( string $ref, string $hyp ) : float {
-    $r = preg_split( '/\s+/', trim( $ref ) );
-    $h = preg_split( '/\s+/', trim( $hyp ) );
-    $d = [];
-    $rl = count( $r );
-    $hl = count( $h );
-    for ( $i = 0; $i <= $rl; $i++ ) {
-        $d[ $i ][0] = $i;
+class IELTS_REST_API {
+    public function __construct() {
+        add_action('rest_api_init', [$this, 'routes']);
     }
-    for ( $j = 0; $j <= $hl; $j++ ) {
-        $d[0][ $j ] = $j;
+
+    public function routes() : void {
+        register_rest_route('examb/v1', '/progress', [
+            'methods'  => 'POST',
+            'callback' => [$this, 'save_progress'],
+            'permission_callback' => function() {
+                return is_user_logged_in() && current_user_can('read');
+            }
+        ]);
+
+        register_rest_route('examb/v1', '/upload-audio', [
+            'methods'  => 'POST',
+            'callback' => [$this, 'upload_audio'],
+            'permission_callback' => function() {
+                return is_user_logged_in() && current_user_can('upload_files');
+            }
+        ]);
     }
-    for ( $i = 1; $i <= $rl; $i++ ) {
-        for ( $j = 1; $j <= $hl; $j++ ) {
-            $cost        = ( $r[ $i - 1 ] === $h[ $j - 1 ] ) ? 0 : 1;
-            $d[ $i ][ $j ] = min(
-                $d[ $i - 1 ][ $j ] + 1,
-                $d[ $i ][ $j - 1 ] + 1,
-                $d[ $i - 1 ][ $j - 1 ] + $cost
-            );
+
+    public function save_progress(\WP_REST_Request $req) : \WP_REST_Response {
+        $user_id = get_current_user_id();
+        $metrics = $req->get_param('metrics');
+        if ( ! is_array($metrics) ) {
+            return new \WP_REST_Response(['ok'=>false,'error'=>'bad_payload'], 400);
         }
+        $logs = get_user_meta($user_id, '_examb_logs', true);
+        if ( ! is_array($logs) ) $logs = [];
+        $san = [];
+        foreach((array)$metrics as $k=>$v){
+            $san[$k] = is_scalar($v) ? sanitize_text_field((string)$v) : '';
+        }
+        $logs[] = [
+            'ts' => current_time('mysql', true),
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'metrics' => $san,
+        ];
+        update_user_meta($user_id, '_examb_logs', $logs);
+        return new \WP_REST_Response(['ok'=>true]);
     }
-    return $rl ? $d[ $rl ][ $hl ] / $rl : 0.0;
+
+    public function upload_audio(\WP_REST_Request $req) : \WP_REST_Response {
+        $filename = sanitize_file_name( (string) $req->get_param('filename') ?: 'recording.webm' );
+        $mime     = sanitize_mime_type( (string) $req->get_param('mime') ?: 'audio/webm' );
+        $data_b64 = (string) $req->get_param('data');
+
+        if ( ! $data_b64 ) return new \WP_REST_Response(['ok'=>false,'error'=>'no_data'], 400);
+
+        $bin = base64_decode($data_b64);
+        if ( ! $bin ) return new \WP_REST_Response(['ok'=>false,'error'=>'decode_failed'], 400);
+
+        $tmp = wp_tempnam($filename);
+        file_put_contents($tmp, $bin);
+
+        $file = [
+            'name'     => $filename,
+            'type'     => $mime,
+            'tmp_name' => $tmp,
+            'error'    => 0,
+            'size'     => filesize($tmp),
+        ];
+
+        if ( ! function_exists('media_handle_sideload') ) {
+            require_once ABSPATH.'wp-admin/includes/file.php';
+            require_once ABSPATH.'wp-admin/includes/media.php';
+            require_once ABSPATH.'wp-admin/includes/image.php';
+        }
+
+        $overrides = ['test_form' => false, 'mimes' => [
+            'webm'=>'audio/webm','wav'=>'audio/wav','ogg'=>'audio/ogg','mp3'=>'audio/mpeg'
+        ]];
+
+        $sideload = wp_handle_sideload($file, $overrides);
+        if ( isset($sideload['error']) ) return new \WP_REST_Response(['ok'=>false,'error'=>$sideload['error']], 400);
+
+        $url  = $sideload['url'];
+        $type = $sideload['type'];
+        $file_path = $sideload['file'];
+
+        $attachment_id = wp_insert_attachment([
+            'post_mime_type' => $type,
+            'post_title'     => sanitize_text_field(pathinfo($filename, PATHINFO_FILENAME)),
+            'post_content'   => '',
+            'post_status'    => 'inherit'
+        ], $file_path);
+
+        require_once ABSPATH.'wp-admin/includes/image.php';
+        wp_update_attachment_metadata($attachment_id, wp_generate_attachment_metadata($attachment_id, $file_path));
+
+        return new \WP_REST_Response(['ok'=>true, 'id'=>$attachment_id, 'url'=>$url]);
+    }
 }

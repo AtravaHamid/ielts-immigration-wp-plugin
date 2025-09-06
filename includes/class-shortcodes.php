@@ -1,118 +1,98 @@
-<?php
-/**
- * Shortcodes for IELTS plugin.
- */
+﻿<?php
+if ( ! defined('ABSPATH') ) exit;
+
 class IELTS_Shortcodes {
     public function __construct() {
-        add_shortcode( 'ielts_lessons', [ $this, 'render_lessons' ] );
-        add_shortcode( 'ielts_board', [ $this, 'render_board' ] );
+        add_shortcode('exam_board', [$this, 'render_board']);
     }
 
-    /**
-     * Render lessons grid.
-     *
-     * @param array $atts Shortcode attributes.
-     * @return string
-     */
-    public function render_lessons( $atts ) : string {
-        $atts = shortcode_atts(
-            [
-                'level'    => '',
-                'category' => '',
-                'limit'    => 12,
-            ],
-            $atts,
-            'ielts_lessons'
-        );
+    public function render_board($atts = []) : string {
+        $atts = shortcode_atts(['lang' => 'en'], $atts, 'exam_board');
 
-        $level    = sanitize_text_field( $atts['level'] );
-        $category = sanitize_text_field( $atts['category'] );
-        $limit    = (int) $atts['limit'];
+        wp_enqueue_style('exam-board-front');
+        wp_enqueue_script('exam-board-front');
 
-        $meta_query = array_filter(
-            [
-                $level ? [ 'key' => '_ielts_level', 'value' => $level ] : null,
-                $category ? [ 'key' => '_ielts_category', 'value' => $category ] : null,
-            ]
-        );
+        ob_start(); ?>
+        <div id="exam-board" class="eb-container" data-lang="<?php echo esc_attr($atts['lang']); ?>">
+            <div class="eb-tabs">
+                <button class="eb-tab is-active" data-target="typing">Typing</button>
+                <button class="eb-tab" data-target="listen-type">Listen & Type</button>
+                <button class="eb-tab" data-target="shadowing">Shadowing</button>
+                <button class="eb-tab" data-target="describe-image">Describe Image</button>
+                <button class="eb-tab" data-target="timer">Timer & Stats</button>
+            </div>
 
-        $q = new WP_Query(
-            [
-                'post_type'      => 'ielts_lesson',
-                'posts_per_page' => $limit,
-                'meta_query'     => array_values( $meta_query ),
-            ]
-        );
+            <div class="eb-panel is-active" id="eb-panel-typing">
+                <div class="eb-row">
+                    <textarea class="eb-target" placeholder="Paste or type target text here..."></textarea>
+                    <textarea class="eb-input" placeholder="Start typing here..."></textarea>
+                </div>
+                <div class="eb-metrics">
+                    <span>WPM: <b class="wpm">0</b></span>
+                    <span>Accuracy: <b class="acc">100%</b></span>
+                    <span>Errors: <b class="errs">0</b></span>
+                </div>
+                <div class="eb-actions">
+                    <button class="eb-btn eb-reset">Reset</button>
+                    <button class="eb-btn eb-save">Save Progress</button>
+                </div>
+            </div>
 
-        ob_start();
-        echo '<div class="ielts-grid">';
-        while ( $q->have_posts() ) {
-            $q->the_post();
-            ielts_get_template( 'shortcode-lessons.php', [ 'id' => get_the_ID() ] );
-        }
-        echo '</div>';
-        wp_reset_postdata();
+            <div class="eb-panel" id="eb-panel-listen-type">
+                <div class="eb-row">
+                    <textarea class="eb-tts-text" placeholder="Enter sentence(s) to play..."></textarea>
+                </div>
+                <div class="eb-actions">
+                    <button class="eb-btn eb-tts-play">Play (TTS)</button>
+                    <button class="eb-btn eb-tts-stop">Stop</button>
+                </div>
+                <div class="eb-row">
+                    <textarea class="eb-input" placeholder="Type what you hear..."></textarea>
+                </div>
+            </div>
 
+            <div class="eb-panel" id="eb-panel-shadowing">
+                <div class="eb-row">
+                    <textarea class="eb-tts-text" placeholder="Enter sentence(s) to shadow..."></textarea>
+                </div>
+                <div class="eb-actions">
+                    <button class="eb-btn eb-tts-play">Play (TTS)</button>
+                    <button class="eb-btn eb-rec-toggle">Record</button>
+                    <button class="eb-btn eb-upload" disabled>Upload Recording</button>
+                    <audio class="eb-playback" controls style="display:none;"></audio>
+                </div>
+                <small class="eb-hint">Tip: wear headphones to avoid echo.</small>
+            </div>
+
+            <div class="eb-panel" id="eb-panel-describe-image">
+                <div class="eb-row eb-image-drop">
+                    <input type="file" accept="image/*" class="eb-image-input" />
+                    <div class="eb-drop-hint">Drop an image here or click to select</div>
+                    <img class="eb-preview" style="display:none;max-width:100%;border-radius:8px;" />
+                </div>
+                <div class="eb-actions">
+                    <button class="eb-btn eb-rec-toggle">Record Description</button>
+                    <button class="eb-btn eb-upload" disabled>Upload Recording</button>
+                    <audio class="eb-playback" controls style="display:none;"></audio>
+                </div>
+            </div>
+
+            <div class="eb-panel" id="eb-panel-timer">
+                <div class="eb-timer">
+                    <input type="number" min="1" max="180" value="25" class="eb-minutes" /> <span>minutes</span>
+                    <button class="eb-btn eb-timer-start">Start</button>
+                    <button class="eb-btn eb-timer-stop" disabled>Stop</button>
+                    <span class="eb-countdown">00:00</span>
+                </div>
+                <div class="eb-metrics">
+                    <span>Total Words: <b class="words">0</b></span>
+                    <span>Total Errors: <b class="errors">0</b></span>
+                    <span>Listening mins: <b class="listen-mins">0</b></span>
+                </div>
+                <button class="eb-btn eb-save eb-save-session">Save Session</button>
+            </div>
+        </div>
+        <?php
         return ob_get_clean();
-    }
-
-    /**
-     * Render interactive board.
-     *
-     * @param array $atts Shortcode attributes.
-     * @return string
-     */
-    public function render_board( $atts ) : string {
-        $atts = shortcode_atts(
-            [
-                'mode' => '',
-                'item' => 0,
-            ],
-            $atts,
-            'ielts_board'
-        );
-
-        $mode = sanitize_text_field( $atts['mode'] );
-        $item = (int) $atts['item'];
-
-        wp_enqueue_style(
-            'ielts-board',
-            IELTS_MIGRATION_URL . 'public/css/board.css',
-            [],
-            IELTS_MIGRATION_VER
-        );
-        wp_enqueue_script( 'wp-api' );
-        wp_enqueue_script(
-            'ielts-board-core',
-            IELTS_MIGRATION_URL . 'public/js/board/core.js',
-            [ 'wp-api' ],
-            IELTS_MIGRATION_VER,
-            true
-        );
-        if ( 'dictation' === $mode ) {
-            wp_enqueue_script(
-                'ielts-board-dictation',
-                IELTS_MIGRATION_URL . 'public/js/board/dictation.js',
-                [ 'ielts-board-core' ],
-                IELTS_MIGRATION_VER,
-                true
-            );
-        } elseif ( 'speaking' === $mode ) {
-            wp_enqueue_script(
-                'ielts-board-speaking',
-                IELTS_MIGRATION_URL . 'public/js/board/speaking.js',
-                [ 'ielts-board-core' ],
-                IELTS_MIGRATION_VER,
-                true
-            );
-        }
-
-        $attrs = sprintf(
-            'class="ielts-board" data-mode="%s" data-item="%d"',
-            esc_attr( $mode ),
-            $item
-        );
-
-        return '<div ' . $attrs . '></div>';
     }
 }
