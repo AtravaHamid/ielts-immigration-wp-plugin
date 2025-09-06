@@ -89,13 +89,23 @@ class IELTS_Shortcodes {
             IELTS_MIGRATION_VER,
             true
         );
-        wp_enqueue_script(
-            'ielts-board-dictation',
-            IELTS_MIGRATION_URL . 'public/js/board/dictation.js',
-            [ 'ielts-board-core' ],
-            IELTS_MIGRATION_VER,
-            true
-        );
+        if ( 'dictation' === $mode ) {
+            wp_enqueue_script(
+                'ielts-board-dictation',
+                IELTS_MIGRATION_URL . 'public/js/board/dictation.js',
+                [ 'ielts-board-core' ],
+                IELTS_MIGRATION_VER,
+                true
+            );
+        } elseif ( 'speaking' === $mode ) {
+            wp_enqueue_script(
+                'ielts-board-speaking',
+                IELTS_MIGRATION_URL . 'public/js/board/speaking.js',
+                [ 'ielts-board-core' ],
+                IELTS_MIGRATION_VER,
+                true
+            );
+        }
 
         $attrs = sprintf(
             'class="ielts-board" data-mode="%s" data-item="%d"',

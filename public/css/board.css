@@ -8,6 +8,10 @@
     box-sizing: border-box;
 }
 
+.ielts-board .ielts-timer {
+    margin-top: 0.5em;
+}
+
 .ielts-board .ielts-word-count {
     margin-top: 0.5em;
     font-size: 0.9em;
