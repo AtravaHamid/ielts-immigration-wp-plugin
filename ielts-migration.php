@@ -21,6 +21,9 @@ require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-home.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-rest-api.php';
 require_once IELTS_MIGRATION_DIR.'includes/class-purchases.php';
+require_once IELTS_MIGRATION_DIR.'includes/class-shortcodes-board.php';
+new IELTS_Board_Shortcode();
+
 
 new IELTS_Assets();
 new IELTS_Custom_Posts();
