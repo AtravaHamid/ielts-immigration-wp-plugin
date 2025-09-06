@@ -117,6 +117,37 @@ add_action( 'rest_api_init', function() {
         },
         'permission_callback' => '__return_true',
     ] );
+
+    register_rest_route( 'ielts/v1', '/speaking', [
+        'methods'  => 'POST',
+        'callback' => function( WP_REST_Request $req ) {
+            $nonce = $req->get_header( 'X-WP-Nonce' );
+            if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Invalid nonce', 'ielts-migration' ) ] );
+            }
+            if ( ! is_user_logged_in() || ! current_user_can( 'upload_files' ) ) {
+                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'Unauthorized', 'ielts-migration' ) ] );
+            }
+            $item_id = absint( $req->get_param( 'item' ) );
+            $files   = $req->get_file_params();
+            if ( empty( $files['file'] ) ) {
+                return rest_ensure_response( [ 'ok' => false, 'error' => __( 'No file', 'ielts-migration' ) ] );
+            }
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $attachment_id = media_handle_sideload( $files['file'], $item_id, null, [
+                'post_status' => 'private',
+                'post_author' => get_current_user_id(),
+            ] );
+            if ( is_wp_error( $attachment_id ) ) {
+                return rest_ensure_response( [ 'ok' => false, 'error' => $attachment_id->get_error_message() ] );
+            }
+            update_user_meta( get_current_user_id(), 'ielts_speaking_' . $item_id, $attachment_id );
+            return rest_ensure_response( [ 'ok' => true, 'url' => wp_get_attachment_url( $attachment_id ) ] );
+        },
+        'permission_callback' => '__return_true',
+    ] );
 } );
 
 /**
