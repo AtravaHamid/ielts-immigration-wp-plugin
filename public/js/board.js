@@ -1,206 +1,294 @@
 (function(){
-  const $ = (sel, ctx=document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-  const root = $('#exam-board'); if(!root) return;
+  'use strict';
 
-  // Tabs
-  $$('.eb-tab', root).forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      $$('.eb-tab', root).forEach(b=>b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      const target = btn.dataset.target;
-      $$('.eb-panel', root).forEach(p=>p.classList.remove('is-active'));
-      $('#eb-panel-'+target.replace(/_/g,'-'), root).classList.add('is-active');
-    });
-  });
+  // ---- Helpers -------------------------------------------------------------
+  const Vars = (window.ExamBoardVars||{});
+  const Log  = (type, payload)=>{ try{ window.ExamBoardLog && window.ExamBoardLog(type, payload||{}); }catch(e){} };
+  const qs   = (sel,root=document)=>root.querySelector(sel);
+  const ce   = (tag, props={})=>Object.assign(document.createElement(tag), props);
+  const on   = (el,ev,fn)=>el&&el.addEventListener(ev,fn);
 
-  // Typing metrics
-  const typingPanel = $('#eb-panel-typing', root);
-  if (typingPanel){
-    const target = $('.eb-target', typingPanel);
-    const input  = $('.eb-input', typingPanel);
-    const wpmEl = $('.wpm', typingPanel), accEl = $('.acc', typingPanel), errsEl = $('.errs', typingPanel);
-    let startedAt = null, totalErrs = 0;
+  const t    = (s)=>s; // i18n placeholder; texts passed via PHP if needed
 
-    const compute = ()=>{
-      const t = target.value;
-      const v = input.value;
-      let errs = 0;
-      const len = Math.min(t.length, v.length);
-      for(let i=0;i<len;i++){ if(t[i]!==v[i]) errs++; }
-      errs += Math.max(0, v.length - t.length);
-      totalErrs = errs;
-      const words = v.trim().length ? v.trim().split(/\s+/).length : 0;
-      const mins = startedAt ? (Date.now()-startedAt)/60000 : 0.001;
-      const wpm = Math.round(words / mins);
-      const acc = t.length ? Math.max(0, Math.round(100*(1 - errs/Math.max(t.length,1)))) : 100;
-      wpmEl.textContent = isFinite(wpm)? wpm : 0;
-      accEl.textContent = acc+'%';
-      errsEl.textContent = errs;
-    };
-
-    input.addEventListener('input', ()=>{
-      if(!startedAt && input.value.length>0) startedAt = Date.now();
-      compute();
-    });
-    target.addEventListener('input', compute);
-
-    $('.eb-reset', typingPanel).addEventListener('click', ()=>{
-      input.value=''; startedAt=null; totalErrs=0; compute();
-    });
-
-    $('.eb-save', typingPanel).addEventListener('click', ()=>{
-      saveProgress({
-        activity: 'typing',
-        words: (input.value.trim().match(/\S+/g)||[]).length,
-        errors: totalErrs,
-        accuracy: parseInt(accEl.textContent),
-        wpm: parseInt(wpmEl.textContent)
-      });
-    });
-  }
-
-  // TTS
-  const speak = (text, lang=root.dataset.lang||'en')=>{
-    if(!window.speechSynthesis) return alert(ExamBoard.i18n.unsupported);
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = lang;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utt);
+  // ---- State machine (prevents TTS & Record overlap) -----------------------
+  const State = {
+    mode: 'idle', // idle | tts | recording | playback
+    set(next){
+      this.mode = next;
+      Log('state', { mode: next });
+      updateControls();
+    }
   };
-  $$('#eb-panel-listen-type, #eb-panel-shadowing', root).forEach(panel=>{
-    const playBtn = $('.eb-tts-play', panel);
-    const stopBtn = $('.eb-tts-stop', panel);
-    const txt = $('.eb-tts-text', panel);
-    if(playBtn) playBtn.addEventListener('click', ()=> speak(txt.value || ''));
-    if(stopBtn) stopBtn.addEventListener('click', ()=> speechSynthesis.cancel());
-  });
 
-  // Recording (MediaRecorder)
-  let mediaStream = null, mediaRecorder = null, chunks = [];
-  const recToggles = $$('.eb-rec-toggle', root);
-  recToggles.forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const panel = btn.closest('.eb-panel');
-      const play = $('.eb-playback', panel);
-      const uploadBtn = $('.eb-upload', panel);
-      if(!mediaRecorder || mediaRecorder.state==='inactive'){
-        try{
-          mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
-          mediaRecorder = new MediaRecorder(mediaStream);
-          chunks = [];
-          mediaRecorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
-          mediaRecorder.onstop = ()=>{
-            const blob = new Blob(chunks, {type: 'audio/webm'});
-            play.src = URL.createObjectURL(blob);
-            play.style.display='block';
-            uploadBtn.disabled = false;
-            btn.textContent = 'Record';
-          };
-          mediaRecorder.start();
-          btn.textContent = ExamBoard.i18n.recording;
-        } catch(e){
-          alert(ExamBoard.i18n.unsupported);
-        }
-      }else{
-        mediaRecorder.stop();
-        mediaStream.getTracks().forEach(t=>t.stop());
-      }
-    });
-  });
-
-  // Upload audio
-  $$('.eb-upload', root).forEach(up=>{
-    up.addEventListener('click', async ()=>{
-      const panel = up.closest('.eb-panel');
-      const play = $('.eb-playback', panel);
-      const res = await fetch(play.src);
-      const blob = await res.blob();
-      up.textContent = ExamBoard.i18n.uploading;
-      up.disabled = true;
-      try{
-        const base64 = await blobToBase64(blob);
-        const r = await api('upload-audio', { filename: 'recording.webm', mime: blob.type, data: base64 });
-        up.textContent = 'Uploaded';
-        if(r && r.url) play.dataset.uploadUrl = r.url;
-      }catch(e){
-        up.textContent = 'Retry Upload'; up.disabled = false;
-      }
-    });
-  });
-
-  function blobToBase64(blob){
-    return new Promise((res,rej)=>{
-      const r = new FileReader();
-      r.onloadend = ()=> res((r.result||'').toString().split(',')[1]||'');
-      r.onerror = rej;
-      r.readAsDataURL(blob);
-    });
-  }
-
-  // Image drop
-  const descPanel = $('#eb-panel-describe-image', root);
-  if(descPanel){
-    const box = $('.eb-image-drop', descPanel);
-    const input = $('.eb-image-input', descPanel);
-    const preview = $('.eb-preview', descPanel);
-    const open = ()=> input.click();
-    const show = file=>{
-      const url = URL.createObjectURL(file);
-      preview.src = url; preview.style.display='block';
-    };
-    ;['click'].forEach(ev=> box.addEventListener(ev, open));
-    input.addEventListener('change', e=> { const f=e.target.files[0]; if(f) show(f); });
-    ;['dragover','dragenter'].forEach(ev=> box.addEventListener(ev, e=> { e.preventDefault(); box.classList.add('drag'); }));
-    ;['dragleave','drop'].forEach(ev=> box.addEventListener(ev, e=> { e.preventDefault(); box.classList.remove('drag'); }));
-    box.addEventListener('drop', e=> { const f=e.dataTransfer.files[0]; if(f && f.type.startsWith('image/')) show(f); });
-  }
-
-  // Timer
-  const timerPanel = $('#eb-panel-timer', root);
-  if(timerPanel){
-    const minsInput=$('.eb-minutes',timerPanel), start=$('.eb-timer-start',timerPanel), stop=$('.eb-timer-stop',timerPanel), cd=$('.eb-countdown',timerPanel);
-    let remain=0, int=null;
-    const fmt=s=> String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-    start.addEventListener('click', ()=>{
-      remain = Math.max(1, parseInt(minsInput.value,10)) * 60;
-      cd.textContent = fmt(remain);
-      start.disabled=true; stop.disabled=false;
-      int = setInterval(()=>{
-        remain--; cd.textContent = fmt(Math.max(0,remain));
-        if(remain<=0){ clearInterval(int); start.disabled=false; stop.disabled=true; }
-      }, 1000);
-    });
-    stop.addEventListener('click', ()=>{ clearInterval(int); start.disabled=false; stop.disabled=true; });
-
-    $('.eb-save-session',timerPanel).addEventListener('click', ()=>{
-      saveProgress({
-        activity:'session',
-        words: parseInt($('.words',timerPanel).textContent)||0,
-        errors: parseInt($('.errors',timerPanel).textContent)||0,
-        listen_mins: parseInt($('.listen-mins',timerPanel).textContent)||0,
-      });
-    });
-  }
-
-  // API helpers
-  async function api(endpoint, payload){
-    const r = await fetch(ExamBoard.rest.url + endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'X-WP-Nonce': ExamBoard.rest.nonce
-      },
-      body: JSON.stringify(payload||{})
-    });
-    if(!r.ok) throw new Error('Request failed');
-    return await r.json();
-  }
-
-  async function saveProgress(metrics){
+  // ---- Library (listening bank) -------------------------------------------
+  // Will try to fetch /public/library/listening.json; else use fallback demo.
+  async function loadLibrary(){
+    const fallback = [
+      { id:'s1', title:'Airport – Check-in', lang:'en', text:'Can I see your passport, please?', url:'' },
+      { id:'s2', title:'Hotel – Booking', lang:'en', text:'I would like to reserve a double room.', url:'' },
+      { id:'s3', title:'IELTS – Part 1', lang:'en', text:'What do you do in your free time?', url:'' }
+    ];
     try{
-      await api('progress', { metrics });
-      alert(ExamBoard.i18n.saved);
-    }catch(e){ alert('Save failed'); }
+      const base = Vars.pluginUrl || '';
+      if(!base) return fallback;
+      const res = await fetch(base + 'public/library/listening.json', { cache:'no-store' });
+      if(!res.ok) return fallback;
+      const data = await res.json();
+      // expected shape: [{id,title,lang,text,url}]
+      return Array.isArray(data) ? data : fallback;
+    }catch(e){ return fallback; }
   }
-})();
+
+  // ---- Audio: TTS + File playback + Recording -----------------------------
+  let synth = window.speechSynthesis || null;
+  let mediaRecorder = null;
+  let chunks = [];
+  let playback = new Audio(); // used for library file playback
+  let currentBlobUrl = null;
+
+  function speak(text, lang){
+    if(!synth){ alert('Speech Synthesis not supported'); return; }
+    try{
+      // stop any playback/recording
+      stopRecording(true);
+      stopPlayback();
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if(lang) u.lang = lang;
+      State.set('tts');
+      u.onend = ()=> State.set('idle');
+      synth.speak(u);
+      Log('tts_play', { len: (text||'').length, lang });
+    }catch(e){
+      State.set('idle');
+    }
+  }
+
+  async function startRecording(){
+    try{
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        alert('Recording not supported'); return;
+      }
+      // stop TTS / playback
+      if(synth){ synth.cancel(); }
+      stopPlayback();
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      mediaRecorder = new MediaRecorder(stream);
+      chunks = [];
+      mediaRecorder.ondataavailable = (e)=>{ if(e.data.size>0) chunks.push(e.data); };
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(chunks, { type:'audio/webm' });
+        currentBlobUrl && URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = URL.createObjectURL(blob);
+        State.set('playback');
+        Log('record_stop', { bytes: blob.size });
+        // auto show playback panel button state
+        const playBtn = qs('[data-eb="playback-play"]');
+        if(playBtn){ playBtn.disabled = false; }
+      };
+      mediaRecorder.start();
+      State.set('recording');
+      Log('record_start');
+    }catch(e){
+      alert('Mic permission denied or error.');
+      State.set('idle');
+    }
+  }
+  function stopRecording(silent){
+    if(mediaRecorder && mediaRecorder.state!=='inactive'){
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(tr=>tr.stop());
+      mediaRecorder = null;
+      if(!silent) State.set('idle');
+    }
+  }
+
+  function startPlayback(url){
+    try{
+      if(synth){ synth.cancel(); }
+      stopRecording(true);
+      playback.pause();
+      playback.src = url;
+      playback.currentTime = 0;
+      playback.onended = ()=> State.set('idle');
+      playback.play();
+      State.set('playback');
+      Log('playback_play', { url });
+    }catch(e){
+      State.set('idle');
+    }
+  }
+  function stopPlayback(){
+    try{
+      playback.pause();
+      playback.currentTime = 0;
+    }catch(_){}
+  }
+
+  // ---- Build UI ------------------------------------------------------------
+  function buildUI(root){
+    root.innerHTML = '';
+    root.classList.add('eb-root');
+
+    const dim = ce('div', { className:'eb-dim' });
+
+    // Drawer
+    const drawer = ce('aside', { className:'eb-drawer', id:'eb-drawer', 'aria-expanded':'false' });
+    const dHead  = ce('div', { className:'eb-drawer__header' });
+    const dTgl   = ce('button', { className:'eb-drawer__toggle', type:'button', title:t('Toggle') });
+    dTgl.textContent = '⟷';
+    const dTitle = ce('div', { className:'eb-drawer__title', textContent:'Tools' });
+    dHead.append(dTitle, dTgl);
+
+    const tools  = ce('nav', { className:'eb-tools' });
+    const toolList = [
+      { id:'typing',   icon:'⌨', label:'Typing' },
+      { id:'listen',   icon:'🎧', label:'Listening' },
+      { id:'speak',    icon:'🎤', label:'Speaking' },
+      { id:'image',    icon:'🖼', label:'Describe' },
+      { id:'timer',    icon:'⏱', label:'Timer' }
+    ];
+    toolList.forEach(item=>{
+      const li = ce('div', { className:'eb-tool', tabIndex:0, role:'button', 'data-tool':item.id });
+      li.innerHTML = `<div class="eb-tool__icon">${item.icon}</div><div class="eb-tool__label">${item.label}</div>`;
+      on(li,'click',()=> activateTool(item.id));
+      tools.append(li);
+    });
+
+    drawer.append(dHead, tools);
+
+    // Stage
+    const stage = ce('section', { className:'eb-stage' });
+
+    const sHead = ce('div', { className:'eb-stage__header' });
+    const title = ce('div', { className:'eb-title', textContent:'ExamBoard — IELTS & PTE' });
+    const actions = ce('div', { className:'eb-actions' });
+    const btnOpenDrawer = ce('button', { className:'eb-btn', textContent:'Menu', type:'button' });
+    on(btnOpenDrawer,'click',()=> toggleDrawer(true));
+    actions.append(btnOpenDrawer);
+
+    sHead.append(title, actions);
+
+    const main  = ce('div', { className:'eb-stage__main' });
+    const work  = ce('div', { className:'eb-work' });
+    const ta    = ce('textarea', { className:'eb-textarea', placeholder:'Type here…', id:'eb-text' });
+
+    // work actions
+    const workActions = ce('div', { className:'eb-actions' });
+    const btnTTS = ce('button', { className:'eb-btn eb-btn--primary', textContent:'Play (TTS)', type:'button', 'data-eb':'tts' });
+    const btnRec = ce('button', { className:'eb-btn eb-btn--danger',  textContent:'Record', type:'button', 'data-eb':'rec' });
+    const btnStop= ce('button', { className:'eb-btn', textContent:'Stop', type:'button', 'data-eb':'stop' });
+    const btnSave= ce('button', { className:'eb-btn eb-btn--success', textContent:'Save Progress', type:'button', 'data-eb':'save' });
+    workActions.append(btnTTS, btnRec, btnStop, btnSave);
+
+    const metrics = ce('div', { className:'eb-metrics' });
+    metrics.innerHTML = `
+      <span class="eb-badge" data-m="wpm">WPM: 0</span>
+      <span class="eb-badge" data-m="acc">Accuracy: 100%</span>
+      <span class="eb-badge" data-m="err">Errors: 0</span>
+    `;
+
+    work.append(ta, workActions, metrics);
+
+    // side panel: Listening Library
+    const panel = ce('aside', { className:'eb-panel' });
+    const pTitle= ce('div', { className:'eb-panel__title', textContent:'Listening Library' });
+    const pList = ce('div', { className:'eb-panel__list', id:'eb-lib' });
+    const pBar  = ce('div', { className:'eb-actions' });
+
+    const fileInp = ce('input', { type:'file', accept:'audio/*', style:'display:none', id:'eb-file' });
+    const btnAdd  = ce('button', { className:'eb-btn', type:'button', textContent:'Add audio (local)' });
+    on(btnAdd, 'click', ()=> fileInp.click());
+    on(fileInp, 'change', (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      const url = URL.createObjectURL(f);
+      addLibraryItem({ id:'local-'+Date.now(), title:f.name, lang: Vars.lang||'en', text:'', url }, pList, ta);
+    });
+
+    pBar.append(btnAdd, fileInp);
+
+    panel.append(pTitle, pList, pBar);
+
+    main.append(work, panel);
+
+    const sFoot = ce('div', { className:'eb-actions' });
+    const info  = ce('div', { className:'eb-badge', textContent:'Ready' });
+    sFoot.append(info);
+
+    stage.append(sHead, main, sFoot);
+
+    // Shell
+    const shell = ce('div', { className:'eb-shell' });
+    shell.append(drawer, stage, dim);
+    root.append(shell);
+
+    // Events
+    on(dTgl, 'click', ()=> toggleDrawer());
+    on(dim, 'click', ()=> toggleDrawer(false));
+    on(btnTTS, 'click', ()=> speak(ta.value, Vars.lang||'en'));
+    on(btnRec, 'click', ()=> startRecording());
+    on(btnStop,'click', ()=> { if(synth) synth.cancel(); stopRecording(); stopPlayback(); State.set('idle'); });
+    on(btnSave,'click', ()=> saveProgress(ta.value, metrics));
+
+    // Keyboard focus on editor
+    ta.focus();
+
+    // Initial load library
+    loadLibrary().then(items=>{
+      items.forEach(it=> addLibraryItem(it, pList, ta));
+    });
+
+    // expose for other scripts (optional)
+    window.ExamBoardUI = { toggleDrawer, activateTool, speak, startRecording, stopRecording, startPlayback };
+  }
+
+  function toggleDrawer(force){
+    const d = qs('#eb-drawer');
+    const dim = qs('.eb-dim');
+    const open = typeof force==='boolean' ? force : !d.classList.contains('is-open');
+    d.classList.toggle('is-open', open);
+    d.setAttribute('aria-expanded', open?'true':'false');
+    const isMobile = matchMedia('(max-width: 768px)').matches;
+    if(isMobile){ dim && dim.classList.toggle('is-visible', open); }
+  }
+
+  function activateTool(id){
+    document.querySelectorAll('.eb-tool').forEach(el=>{
+      el.classList.toggle('is-active', el.getAttribute('data-tool')===id);
+    });
+    // future: switch small helper widgets per tool
+    Log('tool_switch', { id });
+  }
+
+  function addLibraryItem(item, listEl, editor){
+    const row = ce('div', { className:'eb-item' });
+    const icon= ce('div', { className:'eb-tool__icon', innerHTML:'🎵' });
+    const meta= ce('div', { className:'eb-item__meta' });
+    const title=ce('div', { className:'eb-item__title', textContent:item.title||'Audio' });
+    const sub  =ce('div', { textContent: (item.lang||'') });
+    meta.append(title, sub);
+
+    const btns = ce('div', { className:'eb-item__btns' });
+    const bPlay= ce('button', { className:'eb-btn', textContent:'Play', type:'button' });
+    const bUse = ce('button', { className:'eb-btn eb-btn--primary', textContent:'Use', type:'button' });
+
+    on(bPlay,'click', ()=>{
+      if(item.url){ startPlayback(item.url); }
+      else if(item.text){ speak(item.text, item.lang||Vars.lang||'en'); } // fallback to TTS
+    });
+    on(bUse,'click', ()=>{
+      if(item.text){ editor.value = item.text; editor.focus(); }
+      if(item.url){ Log('lib_select', { id:item.id }); }
+    });
+
+    row.append(icon, meta, btns);
+    btns.append(bPlay, bUse);
+    listEl.append(row);
+  }
+
+  function updateControls(){
+    const mode = State.mode;
+    const bTTS = qs('[data-eb="tts"]');
+    const bRec = qs('[data-eb="rec"]');
+    const bStop= qs('[data-eb="s]()
